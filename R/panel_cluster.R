@@ -16,5 +16,4 @@ source("import_data.R")
 #   publisher={JSTOR}
 # }
 # see also: 
-# https://www.rdocumentation.org/packages/gower/versions/0.2.2/topics/gower_dist
-# there are some others too.
+# https://cran.r-project.org/web/packages/gower/vignettes/intro.pdf

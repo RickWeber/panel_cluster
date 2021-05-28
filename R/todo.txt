@@ -1,0 +1,3 @@
+In functions.R:
+* Make sure I'm not clustering based on year or name variables. I'm not sure it matters, but I'd better check.
+* Make sure cluster_back() does what it's supposed to.
