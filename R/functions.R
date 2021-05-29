@@ -23,15 +23,16 @@ two_yrs <- function(df,yr,prev = TRUE){
 }
 # cluster a single year based on underlying data alone.
 cluster_yr <- function(df,yr,k){
-  kdata <- df %>% filter(Year == yr) %>% gower %>% kmeans(k)
+  kdata <- df %>% filter(Year == yr) %>% gower %>% kmeans(k, nstart = 10)
   df[df$Year == yr,'cluster'] <- kdata$cluster
   return(list(df=df,kdata=kdata))
 }
 # use another year's clustering outcome to add information to this years
 # then cluster. 
 cluster2cluster <- function(df,yr,kdata){
-  df1 <- df %>% filter(Year == yr) %>% mutate(cluster = kdata$cluster)
-  df1 %>% gower %>% kmeans(centers = kdata$centers)
+  df <- df %>% filter(Year == yr) 
+  df[df$Year == yr,'cluster'] <- kdata$cluster
+  df %>% gower %>% kmeans(centers = kdata$centers)
 } 
 # Cluster the latest year then use the results to cluster each 
 # prior year 
@@ -43,7 +44,7 @@ cluster_back <- function(df, k){
   for(i in 2:length(yrs)){
     y <- yrs[i]
     kdata <- cluster2cluster(df,y,kdata)
-    df <- df[Year == y,'cluster'] <- kdata$cluster
+    df <- df[df$Year == y,'cluster'] <- kdata$cluster
   }
   return(df)
 }
@@ -56,11 +57,23 @@ cluster_fore <- function(df, k){
   for(i in 2:length(yrs)){
     y <- yrs[i]
     kdata <- cluster2cluster(df,y,kdata)
-    df <- df[Year == y,'cluster'] <- kdata$cluster
+    df <- df[df$Year == y,'cluster'] <- kdata$cluster
   }
   return(df)
 }
 
+# debugging 
+t <- cluster_yr(df,2018,4)
+t1 <- cluster2cluster(df, 2017, t$kdata)
+cbind(t1$cluster, t$df$cluster) %>% head(length(t1$cluster))
+# looks like it's doing what it's supposed to...
+# but I'm getting this error:
+#
+# Error in UseMethod("filter") : 
+#   no applicable method for 'filter' applied to an object of class "c('integer', 'numeric')"
+# In addition: There were 50 or more warnings (use warnings() to see the first 50)
+#
+# when I run: t <- cluster_fore(df,4)
 
 # Standardize column headers that look like 'year', 'country', or 'iso'
 # These functions will make the library more general purpose.
