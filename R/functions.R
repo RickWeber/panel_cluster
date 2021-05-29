@@ -13,48 +13,32 @@ gower <- function(df){
 # Let's take each year, assign cluster memberships, then use those values to 
 # cluster the next year. That is, cluster assignment is a function of this 
 # this year's values and next year's cluster membership.
-
-
-
 cluster_back <- function(df, k){
   yrs <- grab_yrs(df)
-  first_yr <- max(yrs) # first year to cluster on, not first in the data
-  last_yr <- min(yrs)
-  df$cluster <- NA
-  for(i in 1:length(yrs)){
+  df$cluster <- integer(nrow(df))
+  df <- cluster_yr(df,yrs[1],k)
+  for(i in 2:length(yrs)){
     y <- yrs[i]
-    y1 <- yrs[i+1]
-    x0 <- df[df$Year == y]
-    x1 <- df[df$Year == y1]
-    if(y == last_yr){
-      return(df)
-    }
-    if(y == first_yr){
-      df[df$Year == y,'cluster'] <- gower(x0) %>% kmeans(k)$cluster
-    }
-    else{
-      xt <- x0 
-      xt$cluster <- x1$cluster # I think that'll work. Might be wonky with NAs.
-      df[df$Year == y,'cluster'] <- gower(xt) %>% kmeans(k)$cluster
-    }
+    df <- cluster_yr_up(df,y,k)
   }
-}
-cluster_back(df,4)
+  return(df)
+} ; cluster_back(df,4)
 
 cluster_yr <- function(df,yr,k){
-  clusters <- df %>%  
-    filter(Year == yr) %>%
-    gower %>%
-    kmeans(k)$cluster
-  df[df$Year == yr,'cluster'] <- clusters
+  df <- df %>%
+    filter(Year == yr)
+  df[df$Year == yr,'cluster'] <- (df %>% gower %>% kmeans(k))$cluster
   return(df)
 }
 
-cluster_yr_back <- function(df,yr,k){
-  
-  yr2 <- yrs[2]
-  df1 <- df[df$Year == yr,]
-  df2 <- df[df$Year == yr2]
+cluster_yr_up <- function(df,yr,k){
+  df1 <- df %>% filter(Year == yr)
+  # previous year's data should have cluster membership
+  yr2 <- two_yrs(df,yr,F) %>% setdiff(yr)
+  df2 <- df %>% filter(Year == yr2)
+  df3 <- df2 %>% select(-contains("Area"),-Year,-contains("Summary")) %>% full_join(df1)
+  df[df$Year == yr,'cluster'] <- (df3 %>% gower %>% kmeans(k))$cluster
+  return(df)
 }
 
 
