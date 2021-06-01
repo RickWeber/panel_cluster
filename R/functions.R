@@ -10,6 +10,52 @@ gower <- function(df){
   }) %>% unlist %>% matrix(.,ncol = nrow(df))
 } 
 
+# update defaults for kmeans
+# kmeans <- function(x, centers = 4, iter.max = 20L, nstart = 1L){
+#   kmeans(x, centers = centers, iter.max = iter.max, nstart = nstart)
+# }
+
+##### June 1 work
+# Focus on aligning clusters.
+# If I've got two datasets with clusters that aren't already identical, 
+# then I want to either have centroids, or find sample centroids, then
+# use those centroids to re-align then redefine the clusters.
+align_clusters2 <- function(clustered_data1, clustered_data2){
+  df1 <- clustered_data1 ; df2 <- clustered_data2
+  df3 <- full_join(df1, df2,
+                   by = c("Countries", "cluster"),
+                   suffix = c(".1",".2"))
+  # Already aligned case:
+  if(df3$cluster.1 == df3$cluster.2){
+    return(full_join(df1,df2))
+  }
+  # Else, find centroids for df1$cluster
+  centroids.1 <- df1 %>% group_by(cluster) %>%
+    # summarize_if(is.numeric,funs(mean(.,na.RM=TRUE)))
+    gower
+}
+
+
+df_clustered <- df %>% 
+  group_by(Year) %>% 
+  nest %>%
+  mutate(dist = map(data,gower),
+         k = map(dist,function(x){
+           kmeans(x,4)
+         }))
+                 
+         
+
+  mutate(dist = gower(data)) %>%
+  mutate(k = map(dist,function(x){kmeans(x,4)})) %>%
+  mutate(cluster = map(k,extract_cluster)) %>%
+  mutate(aligned_cluster = align_clusters(cluster,Year,first=TRUE))
+
+extract_cluster <- function(kdata){
+  # pull cluster membership from a nested
+}
+align_clusters <- function(cluster_var,group_var,first=TRUE){}
+##### Work before June 1
 # Convenience function for grabbing the years from the dataset.
 grab_yrs <- function(df){
   unique(df$Year) %>% sort(decreasing = TRUE)
