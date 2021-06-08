@@ -30,11 +30,13 @@ align_clusters2 <- function(clustered_data1, clustered_data2){
     return(full_join(df1,df2))
   }
   # Else, find centroids for df1$cluster
-  centroids.1 <- df1 %>% group_by(cluster) %>%
-    # summarize_if(is.numeric,funs(mean(.,na.RM=TRUE)))
-    gower
+  centroids.1 <- df1 %>% find_centroids
 }
 
+find_centroids(df,cluster_var = "cluster"){
+  df %>% group_by(cluster_var) %>%
+    summarize_if(is.numeric,funs(mean(.,na.rm=TRUE)))
+}
 
 df_clustered <- df %>% 
   group_by(Year) %>% 
@@ -42,14 +44,7 @@ df_clustered <- df %>%
   mutate(dist = map(data,gower),
          k = map(dist,function(x){
            kmeans(x,4)
-         }))
-                 
-         
-
-  mutate(dist = gower(data)) %>%
-  mutate(k = map(dist,function(x){kmeans(x,4)})) %>%
-  mutate(cluster = map(k,extract_cluster)) %>%
-  mutate(aligned_cluster = align_clusters(cluster,Year,first=TRUE))
+         })) # from here I need to extract cluster membership.
 
 extract_cluster <- function(kdata){
   # pull cluster membership from a nested
@@ -87,7 +82,7 @@ cluster_back <- function(df, k){
   cluster1 <- cluster_yr(df,yrs[1],k)
   kdata <- cluster1$kdata
   df <- cluster1$df
-  for(i in 2:length(yrs)){
+  for(i in 2:length(yrs)){ # replace with seq_along?
     y <- yrs[i]
     kdata <- cluster2cluster(df,y,kdata)
     df <- df[df$Year == y,'cluster'] <- kdata$cluster
