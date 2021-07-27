@@ -1,3 +1,18 @@
+Late July.
+
+I'll have to go through this document soon to clear things out.
+
+Here's a thought on comparing different methods for clustering a panel dataset: if I've got a year-by-year set of clusters with aligned labels, then I can use that as a baseline--e.g. compare within sum of squares of different methods as a ratio to this metric. 
+
+For example, it would be nice to know if making a convoluted model-based cluster was only marginally better than just widening the data (or not). 
+
+That requires a few todo items:
+
+* Code to align year-wise clusters
+* Code to calculate some kind of loss function for a clustered panel
+* Code to visualize clusters (probably PCA the data to 2D, plot and color, etc.)
+* 
+
 Early July!
 
 I'm back in this project after a delay of a few weeks. To take advantage of having

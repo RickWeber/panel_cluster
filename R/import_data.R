@@ -4,5 +4,14 @@ if(!file.exists("../data/EFW_data_raw.xlsx")){
   download.file(efw_data_url,destfile = "../data/EFW_data_raw.xlsx")
 }
 efw_data_raw <- read_excel("../data/EFW_data_raw.xlsx",sheet = 1, skip = 4)
-efw_data_panel <- read_excel("../data/EFW_data_raw.xlsx",sheet = 2)
+efw_data_panel <- read_excel("../data/EFW_data_raw.xlsx",sheet = 2) %>%
+  rename(year = Year,
+         iso3c = ISO_Code,
+         country = Countries,
+         overall = Summary,
+         efw1 = "Area 1",
+         efw2 = "Area 2",
+         efw3 = "Area 3",
+         efw4 = "Area 4",
+         efw5 = "Area 5")
 efw_data_pre1970s <- read_excel("../data/EFW_data_raw.xlsx",sheet = 3)
