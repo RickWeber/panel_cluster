@@ -1,4 +1,14 @@
-Late July.
+#note to self
+What I *really* want to do is figure out what sorts of paths countries take 
+through the EFW dataset. But the set of plausible paths is one of those 
+combinatorial messes that comically dwarfs this data set. It's worth reminding
+a reader that although this code allows us to find clusters, it's only clustering
+what we've seen, and that's a small subset of what's possible. There is no guarantee 
+that what humans have tried in the last 50 years includes the things we *should*
+try (by any normative standard!).
+#/note to self
+
+#Late July.
 
 I'll have to go through this document soon to clear things out.
 
@@ -13,7 +23,7 @@ That requires a few todo items:
 * Code to visualize clusters (probably PCA the data to 2D, plot and color, etc.)
 * 
 
-Early July!
+#Early July!
 
 I'm back in this project after a delay of a few weeks. To take advantage of having
 a blank slate, I'm going to work on the project without looking at my old work.
