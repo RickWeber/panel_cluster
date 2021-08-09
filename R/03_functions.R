@@ -159,6 +159,9 @@ cluster_alignment <- function(clustered_panel_df){
   out
 }
 
+###########################
+# test
+
 t1 <- df %>% cluster_by_year %>% select(-cluster_object,-data) %>% unnest()
 t2 <- t1 %>% cluster_alignment
 
@@ -168,3 +171,97 @@ t2 %>%
   theme_minimal() +
   scale_fill_brewer(type = "qual",
                     palette = "Set1")
+# I'm not convinced this thing is doing what I want it to.
+# It's definitely changing some labels, but the plot is still showing wild change
+# in labels over time.
+
+######################
+
+### Plot cluster membership over time
+
+plot_membership <- function(clustered_panel_df){
+  clustered_panel_df %>%
+    ggplot(aes(year,country,fill = as.factor(cluster))) +
+    geom_tile() +
+    theme_minimal() +
+    scale_fill_brewer(type = "qual",
+                      palette = "Set1")
+}
+
+### Chained k-means
+
+chained_clustering_by_year <- function(df, k = 4){
+  yrs <- unique(df$year) %>% sort
+  first_df <- df %>%
+    filter(year == first(yrs)) %>% 
+    na.omit 
+  # print(nrow(first_df))
+  first_k <- first_df %>% 
+    select(contains("efw")) %>%
+    scale %>%
+    kmeans(k)
+  cent <- first_k$centers
+  # print(cent)
+  out_df <- cbind(first_df,cluster = first_k$cluster) %>% as_tibble()
+  for(y in setdiff(yrs,first(yrs))){
+    # print(y)
+    next_df <- df %>%
+      filter(year == y) %>%
+      na.omit
+    next_k <- next_df %>%
+      select(contains("efw")) %>%
+      scale %>%
+      kmeans(cent)
+    cent <- next_k$centers
+    # print(cent)
+    next_df <- cbind(next_df, cluster = next_k$cluster)
+    out_df <- full_join(out_df,next_df)
+  }
+  return(out_df)
+} #; df %>% chained_clustering_by_year() %>% plot_membership()
+# That looks a lot better than the alignment stuff above.
+# This is still clustering by year, just starting the algorithm with the results 
+# from the year before.
+
+# map data
+map_coords <- map_data("world") %>%
+  as_tibble() %>%
+  mutate(iso3c = countrycode(region,"country.name","iso3c"))
+
+df %>% 
+  cluster_wide %>% 
+  right_join(map_coords) %>% 
+  ggplot(aes(long,lat,group = group)) + 
+  geom_polygon(aes(fill = as.factor(cluster)),color = alpha("white", 1/2), size = 0.2) +
+  theme(legend.position = "none") +
+  theme(
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank(),
+    axis.title.y=element_blank(),
+    axis.text.y=element_blank(),
+    axis.ticks.y=element_blank(),
+    panel.background = element_blank()) +
+  labs(title =  "",
+       x = "",
+       y = "") + scale_fill_viridis_d()
+
+### mapping function
+draw_map <- function(df){
+  df %>% 
+    right_join(map_coords) %>% 
+    ggplot(aes(long,lat,group = group)) + 
+    geom_polygon(aes(fill = as.factor(cluster)),color = alpha("white", 1/2), size = 0.2) +
+    theme(legend.position = "none") +
+    theme(
+      axis.text.x=element_blank(),
+      axis.ticks.x=element_blank(),
+      axis.title.y=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks.y=element_blank(),
+      panel.background = element_blank()) +
+    labs(title =  "",
+         x = "",
+         y = "") + scale_fill_viridis_d()
+} 
+
+df %>% cluster_wide %>% draw_map
