@@ -145,12 +145,6 @@ cluster_alignment <- function(clustered_panel_df){
     distances <- cluster_center_distances(df0,df1)
     # choose a mapping to minimize total distance between centers
     mapping <- choose_mapping(distances)
-    # Let's minimize the sum of squared differences
-    # I can represent the mapping with a permutation of 1:nclusters
-    # that maps each of the new clusters to the original cluster labels
-    # I want to choose the mapping that minimizes the distance between 
-    # centers
-    mapping <- sample(1:nclusters) # random mapping for testing
     df1 <- df1 %>%
       relabel(mapping)
     # Now I can overwrite the data I started with
@@ -159,23 +153,6 @@ cluster_alignment <- function(clustered_panel_df){
   out
 }
 
-###########################
-# test
-
-t1 <- df %>% cluster_by_year %>% select(-cluster_object,-data) %>% unnest()
-t2 <- t1 %>% cluster_alignment
-
-t2 %>%
-  ggplot(aes(year,country)) +
-  geom_tile(aes(fill = as.factor(cluster))) + 
-  theme_minimal() +
-  scale_fill_brewer(type = "qual",
-                    palette = "Set1")
-# I'm not convinced this thing is doing what I want it to.
-# It's definitely changing some labels, but the plot is still showing wild change
-# in labels over time.
-
-######################
 
 ### Plot cluster membership over time
 
@@ -222,28 +199,13 @@ chained_clustering_by_year <- function(df, k = 4){
 # That looks a lot better than the alignment stuff above.
 # This is still clustering by year, just starting the algorithm with the results 
 # from the year before.
+# Question: are the results affected by a widening of the dataset? e.g., if one year has a lot of new countries, 
+# could that result in cluster centers shifting (relatively) dramatically?
 
 # map data
 map_coords <- map_data("world") %>%
   as_tibble() %>%
   mutate(iso3c = countrycode(region,"country.name","iso3c"))
-
-df %>% 
-  cluster_wide %>% 
-  right_join(map_coords) %>% 
-  ggplot(aes(long,lat,group = group)) + 
-  geom_polygon(aes(fill = as.factor(cluster)),color = alpha("white", 1/2), size = 0.2) +
-  theme(legend.position = "none") +
-  theme(
-    axis.text.x=element_blank(),
-    axis.ticks.x=element_blank(),
-    axis.title.y=element_blank(),
-    axis.text.y=element_blank(),
-    axis.ticks.y=element_blank(),
-    panel.background = element_blank()) +
-  labs(title =  "",
-       x = "",
-       y = "") + scale_fill_viridis_d()
 
 ### mapping function
 draw_map <- function(df){
@@ -265,3 +227,38 @@ draw_map <- function(df){
 } 
 
 df %>% cluster_wide %>% draw_map
+
+
+###########################
+# test the cluster alignment function
+
+t1 <- df %>% cluster_by_year %>% select(-cluster_object,-data) %>% unnest(clustered_data)
+t2 <- t1 %>% cluster_alignment
+
+t3 <- t1 %>% group_by(cluster,year) %>% summarize_if(is.double,mean) %>% ungroup %>%
+  add_pca_efw() %>%
+  mutate(aligned = FALSE)
+# colnames(t3)[8:9] <- c("PC1","PC2")
+t3 %>% ggplot(aes(PC1,PC2,color = factor(cluster))) + geom_point() + facet_wrap(~year)
+
+t4 <- t2 %>% group_by(cluster,year) %>% summarize_if(is.double,mean) %>% ungroup %>%
+  add_pca_efw() %>% 
+  mutate(aligned = TRUE)
+# colnames(t4)[8:9] <- c("PC1","PC2")
+t4 %>% ggplot(aes(PC1,PC2,color = cluster)) + geom_point() + facet_wrap(~year)
+
+full_join(t3,t4) %>% 
+  ggplot(aes(PC1,PC2)) +
+  geom_point(aes(color = factor(cluster))) +
+  facet_grid (aligned ~ year)
+
+t2 %>% plot_membership
+
+# Okay, the labels aren't stable in the way I'd hoped for, but looking at that 
+# second from last plot I can see that there are some trajectories I want to capture 
+# (see image file from Aug 10). The aligned clusters seem to keep their labels,
+# but sometimes two clusters swap labels for a while. Like from 2000 to 2004 cluster 2 
+# is stable, then switches labels with cluster 3. Cluster 4 gets muddled with cluster 1
+# around the same time.
+######################
+
