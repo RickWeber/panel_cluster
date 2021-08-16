@@ -38,3 +38,12 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Docs and presentations
+*.ppt
+*.doc
+*.pptx
+*.docx
+*.odt
+*.odp
+*.odf

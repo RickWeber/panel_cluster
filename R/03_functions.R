@@ -97,6 +97,40 @@ cluster_center_distances <- function(df0,df1){
   out
 }
 
+# Will this distance measure make the alignment behave better?
+# Instead of looking for centroids centered in the original dimensions
+# of the data, look in the first two principal components.
+cluster_principal_distances <- function(df0,df1){
+  nclusters = unique(df0$cluster) %>% length
+  df0 <- df0 %>%
+    add_pca_efw()
+  df1 <- df1 %>%
+    add_pca_efw()
+  centers0 <- df0 %>%
+    group_by(cluster) %>%
+    summarize_at(contains("PC"),mean) 
+  centers1 <- df1 %>%
+    group_by(cluster) %>%
+    summarize_at(contains("PC"),mean)
+  out <- map(1:nclusters,
+             function(x){
+               c0 <- centers0 %>%
+                 filter(cluster == x) %>%
+                 select(-cluster)
+               map_dbl((1:nclusters) + nclusters,
+                       function(x){
+                         c1 <- centers1 %>%
+                           filter(cluster == x) %>%
+                           select(-cluster)
+                         (c0 - c1)^2 %>% 
+                           sum %>%
+                           sqrt
+                       })
+             }) %>%
+    unlist %>%
+    matrix(ncol = nclusters)
+}
+
 evaluate_mapping <- function(mapping, distances){
   # rearrange the distances matrix based on the mapping
   diag(distances[mapping,])^2 %>% 
@@ -143,6 +177,7 @@ cluster_alignment <- function(clustered_panel_df){
       mutate(cluster = cluster + nclusters) # avoid over-writing
     # Calculate distances between cluster centers
     distances <- cluster_center_distances(df0,df1)
+    # distances <- cluster_principal_distances(df0,df1)
     # choose a mapping to minimize total distance between centers
     mapping <- choose_mapping(distances)
     df1 <- df1 %>%
@@ -254,6 +289,14 @@ full_join(t3,t4) %>%
 
 t2 %>% plot_membership
 
+full_join(t3,t4) %>%
+  ggplot(aes(year,PC1)) +
+  geom_line(aes(color = factor(cluster))) +
+  facet_wrap(~aligned)
+
+full_join(t3,t4) %>%
+  group_by(aligned,cluster,year) %>%
+  summarize_if(is.double,mean)
 # Okay, the labels aren't stable in the way I'd hoped for, but looking at that 
 # second from last plot I can see that there are some trajectories I want to capture 
 # (see image file from Aug 10). The aligned clusters seem to keep their labels,
