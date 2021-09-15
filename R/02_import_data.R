@@ -13,5 +13,8 @@ efw_data_panel <- read_excel("../data/EFW_data_raw.xlsx",sheet = 2) %>%
          efw2 = "Area 2",
          efw3 = "Area 3",
          efw4 = "Area 4",
-         efw5 = "Area 5")
+         efw5 = "Area 5") %>%
+  # filter(!is.na(year)) %>%
+  mutate(year = as.integer(year))
+  # mutate(year = as_date(year))
 efw_data_pre1970s <- read_excel("../data/EFW_data_raw.xlsx",sheet = 3)

@@ -1,1 +1,8 @@
-pacman::p_load(tidyverse,readxl,gower,gtools,countrycode,viridisLite)
+pacman::p_load(tidyverse,
+               readxl,
+               gower,
+               gtools,
+               countrycode,
+               viridisLite,
+               gganimate,
+               lubridate)

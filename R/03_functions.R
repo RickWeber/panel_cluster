@@ -43,7 +43,7 @@ gower <- function(df){
 } 
 
 ### Year-wise clustering
-cluster_by_year <- function(df, k = 4){
+cluster_by_year_full <- function(df, k = 4){
   df %>%
     group_by(year) %>%
     nest %>%
@@ -54,151 +54,17 @@ cluster_by_year <- function(df, k = 4){
       cluster = c$cluster
       cbind(d %>% na.omit,cluster) %>% as_tibble
     }))
-} # ; df %>% cluster_by_year
+} 
 
-### Cluster alignment
-
-# Cluster alignment
-
-cluster_centers <- function(df){
-  # Convenience function
-  df %>% 
-    group_by(cluster) %>%
-    summarize_if(is.double,funs(mean(.,na.rm = T)))
+cluster_by_year <- function(df, k = 4){
+  cluster_by_year_full(df, k) %>% 
+    select(clustered_data) %>%
+    unnest
 }
 
-cluster_center_distances <- function(df0,df1){
-  nclusters = unique(df0$cluster) %>% length
-  centers0 <- df0 %>%
-    select(cluster,contains("efw")) %>%
-    cluster_centers
-  centers1 <- df1 %>%
-    select(cluster,contains("efw")) %>%
-    cluster_centers
-  out <- map(1:nclusters,
-             function(x){
-               c0 <- centers0 %>%
-                 filter(cluster == x) %>%
-                 select(-cluster)
-               map_dbl((1:nclusters) + nclusters,
-                       function(x){
-                         c1 <- centers1 %>%
-                           filter(cluster == x) %>%
-                           select(-cluster)
-                         (c0 - c1)^2 %>% 
-                           sum %>%
-                           sqrt
-                       })
-             }) %>% 
-    unlist %>%
-    matrix(ncol = nclusters)
-  rownames(out) <- (1:nclusters) + 4
-  colnames(out) <- 1:nclusters
-  out
-}
+source("03a_alignment.R")
 
-# Will this distance measure make the alignment behave better?
-# Instead of looking for centroids centered in the original dimensions
-# of the data, look in the first two principal components.
-cluster_principal_distances <- function(df0,df1){
-  nclusters = unique(df0$cluster) %>% length
-  df0 <- df0 %>%
-    add_pca_efw()
-  df1 <- df1 %>%
-    add_pca_efw()
-  centers0 <- df0 %>%
-    group_by(cluster) %>%
-    summarize_at(contains("PC"),mean) 
-  centers1 <- df1 %>%
-    group_by(cluster) %>%
-    summarize_at(contains("PC"),mean)
-  out <- map(1:nclusters,
-             function(x){
-               c0 <- centers0 %>%
-                 filter(cluster == x) %>%
-                 select(-cluster)
-               map_dbl((1:nclusters) + nclusters,
-                       function(x){
-                         c1 <- centers1 %>%
-                           filter(cluster == x) %>%
-                           select(-cluster)
-                         (c0 - c1)^2 %>% 
-                           sum %>%
-                           sqrt
-                       })
-             }) %>%
-    unlist %>%
-    matrix(ncol = nclusters)
-}
-
-evaluate_mapping <- function(mapping, distances){
-  # rearrange the distances matrix based on the mapping
-  diag(distances[mapping,])^2 %>% 
-    sum
-}
-
-choose_mapping <- function(distances){
-  possible_mappings <- permutations(ncol(distances),ncol(distances))
-  nmappings <- nrow(possible_mappings)
-  out <- possible_mappings[1,]
-  best_score <- evaluate_mapping(out, distances)
-  for (m in 1:nmappings){
-    current_score <- evaluate_mapping(possible_mappings[m,],distances)
-    if (current_score < best_score){
-      out <- possible_mappings[m,]
-      best_score <- current_score
-    }
-  }
-  out
-}
-
-relabel <- function(df,mapping){
-  # relabel a data frame with shifted labels according to a provided mapping
-  nclusters = unique(df$cluster) %>% length
-  for(c in 1:nclusters){
-    df <- df %>%
-      mutate(cluster = ifelse(cluster == (c + nclusters),
-                              mapping[c],
-                              cluster))
-  }
-  df
-}
-
-cluster_alignment <- function(clustered_panel_df){
-  out <- clustered_panel_df
-  yrs <- unique(out$year) %>% sort
-  clusters <- unique(out$cluster) %>% sort
-  nclusters <- length(clusters)
-  for(y in setdiff(yrs,first(yrs))){
-    previous_yr <- yrs[yrs < y] %>% last
-    # line up y's cluster labels with the previous year's
-    df0 <- out %>% filter(year == previous_yr)
-    df1 <- out %>% filter(year == y) %>%
-      mutate(cluster = cluster + nclusters) # avoid over-writing
-    # Calculate distances between cluster centers
-    distances <- cluster_center_distances(df0,df1)
-    # distances <- cluster_principal_distances(df0,df1)
-    # choose a mapping to minimize total distance between centers
-    mapping <- choose_mapping(distances)
-    df1 <- df1 %>%
-      relabel(mapping)
-    # Now I can overwrite the data I started with
-    out[out$year == y,"cluster"] <- df1$cluster
-  }
-  out
-}
-
-
-### Plot cluster membership over time
-
-plot_membership <- function(clustered_panel_df){
-  clustered_panel_df %>%
-    ggplot(aes(year,country,fill = as.factor(cluster))) +
-    geom_tile() +
-    theme_minimal() +
-    scale_fill_brewer(type = "qual",
-                      palette = "Set1")
-}
+df %>% cluster_by_year(4) %>% cluster_alignment(4)
 
 ### Chained k-means
 
@@ -230,7 +96,7 @@ chained_clustering_by_year <- function(df, k = 4){
     out_df <- full_join(out_df,next_df)
   }
   return(out_df)
-} #; df %>% chained_clustering_by_year() %>% plot_membership()
+} # ; df %>% chained_clustering_by_year() %>% plot_membership()
 # That looks a lot better than the alignment stuff above.
 # This is still clustering by year, just starting the algorithm with the results 
 # from the year before.
@@ -262,7 +128,7 @@ draw_map <- function(df){
 } 
 
 df %>% cluster_wide %>% draw_map
-
+# df %>% cluster_wide %>% fviz_cluster
 
 ###########################
 # test the cluster alignment function
