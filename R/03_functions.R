@@ -1,6 +1,18 @@
+# remove below
 rm(list = ls())
 source("01_libraries.R")
 source("02_import_data.R") ; df <- efw_data_panel
+# remove above. Just there for debugging
+
+### Visualize cluster membership over time
+plot_membership <- function(clustered_panel_df){
+  clustered_panel_df %>%
+    ggplot(aes(year,country,fill = as.factor(cluster))) +
+    geom_tile() +
+    theme_minimal() +
+    scale_fill_brewer(type = "qual",
+                      palette = "Set1")
+}
 
 ### Widen data
 efw_widen <- function(df, vars=paste0("efw",1:5)){
@@ -9,6 +21,7 @@ efw_widen <- function(df, vars=paste0("efw",1:5)){
     pivot_wider(names_from = "year",
                 values_from = vars)
 }
+
 ### Widen then cluster
 cluster_wide <- function(df, k = 4){
   out <- cbind((df %>%
@@ -62,12 +75,7 @@ cluster_by_year <- function(df, k = 4){
     unnest
 }
 
-source("03a_alignment.R")
-
-df %>% cluster_by_year(4) %>% cluster_alignment(4)
-
 ### Chained k-means
-
 chained_clustering_by_year <- function(df, k = 4){
   yrs <- unique(df$year) %>% sort
   first_df <- df %>%
@@ -96,7 +104,19 @@ chained_clustering_by_year <- function(df, k = 4){
     out_df <- full_join(out_df,next_df)
   }
   return(out_df)
-} # ; df %>% chained_clustering_by_year() %>% plot_membership()
+}
+
+###
+
+
+
+
+########
+source("03a_alignment.R")
+
+df %>% cluster_by_year(4) %>% cluster_alignment(4)
+
+ # ; df %>% chained_clustering_by_year() %>% plot_membership()
 # That looks a lot better than the alignment stuff above.
 # This is still clustering by year, just starting the algorithm with the results 
 # from the year before.
