@@ -1,0 +1,183 @@
+---
+title: "Clusters of Economic Freedom Through Time"
+author: "Rick Weber"
+date: "10/16/2021"
+output: ioslides_presentation
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+source('01_libraries.R')
+source('02_import_data.R')
+#source('03_functions.R')
+#source('03a_alignment.R')
+```
+
+## Before we begin
+
+### Follow along at home!
+To see the project in all it's incomplete glory, check out my GitHub account!
+This project lives at https://www.github.com/rickWeber/panel_cluster
+
+## Background
+
+-   Institutions matter
+-   But what *mix* of institutions is best?
+
+## The underlying data: Economic Freedom of the World (EFW)
+
+EFW index combines five sub-indices to create a metric indicating how market-oriented* a country's institutions are
+
+Each on a 1-10 scale with higher numbers indicating more "pro-market"
+
+Previous literature finds higher EFW scores are associated with better outcomes (health, wealth, etc.). See the annual report for details.
+
+*pro-market != pro-business.
+
+## Five areas: 
+
+* Size of Government
+* Property Rights
+* Sound Money
+* Free Trade
+* Regulation
+
+
+## Big question
+
+**Can we convert the quantitative measure of the Economic Freedom of the World index into a qualitative indicator of where a country fits into multi-dimensional "institution space"?**
+
+### Answer: Yes!
+
+## Traditional approach:
+
+Studies using EFW treat it linearly:
+
+* Overall index (e.g. 'how does EFW relate to entrepreneurship?')
+* Sub-indices (e.g. 'which area is most important?')
+
+Clustering approach:
+
+* What groups exist in the 5-D EFW space?
+* What *combinations* of institutional traits are successful?
+
+## Huskinson and Lawson
+
+-   *Clusters of Economic Freedom* (2014) by Huskinson and Lawson.
+-   K-means clustering (k = 4), 2010 data
+-   Clustered into "Liberal Market", "Social Democratic", "Poorly Governed Market", and "State Dominated" groups.
+-   "Social Democratic" cluster outperformed other groups on GDP/cap, relative and absolute income earned by bottom 10%, life expectancy, and political and civil rights
+
+
+## Clusters of Economic Freedom Revisited
+
+My contribution: *Clusters of Economic Freedom Revisited* (2021)
+
+Basic approach: Hierarchical Clustering
+
+* Normalize 5 subindices for 2016 data
+* Iteratively combine countries/clusters with their nearest neighbors in 5-D space (creating a tree/'Dendrogram')
+* Cut the tree at some level to get some number of clusters
+
+For details and code: https://github.com/RickWeber/EFW_clustering
+
+**tl;dr:** Applying clustering techniques to *all* the data captures something that the linear EFW data doesn't capture on its own.
+
+## Outcomes - tests
+
+What do we get from this approach? 
+
+171 models under two simple specifications: 
+
+Some variable of interest as a linear function of EFW overall score and the same thing but with cluster
+membership. 
+
+$$y_t = \beta_0 + \beta_1 EFW_t$$
+$$y_t = \beta_0 + \beta_1 EFW_t + \beta_2 Cluster_t$$
+
+## Outcomes - results
+
+* Cluster membership increased $R^2$ by about 0.35 on average.
+* This approach captures information that is imperfectly captured by the straight linear EFW
+variable.
+* It's not just how much freedom you have, but the particular mix. 
+* (Which mix? I don't know. I was just looking at the aggregate outcome. You should write a paper using my dataset and cite my paper!)
+* (That's slightly overstating things. Basically I found a free cluster, an unfree cluster, and two in-between clusters...)
+
+## Clusters of Economic Freedom Through Time
+
+The initial idea: What groupings (clusters) can we find among different
+countries based on their institutional framework (as proxied by the 5
+sub indices of the Economic Freedom of the World dataset)?
+
+This follow up: What groupings do we see if we look at countries'
+trajectories over time and not just at a given point of time.
+
+## Approach 1: Chained-kmeans
+
+To keep labels from being totally arbitrary, the centroids from one year
+are passed into the algorithm to cluster for the following year. This is
+still basically clustering one year at a time, but the labels are more
+stable than when clustering in total isolation.
+
+## Chained-kmeans
+![](https://raw.githubusercontent.com/RickWeber/kmeans_over_time/master/clusters_over_time.png)
+See the link below to look on your own screen:
+https://raw.githubusercontent.com/RickWeber/kmeans_over_time/master/clusters_over_time.png
+
+## Approach 2: The whole enchilada
+
+Instead of clustering on one year, cluster on the entire dataset so we
+are comparing countries in a 125-dimensional space
+rather than just a 5-D space.
+
+
+## Gower distance
+
+If we've got all the data the simplest way to ask "which cluster is Country A closest too?" is to use Euclidean distance.
+
+If some dimensions are missing, that option is off the table. 
+
+Instead, I'll be using "Gower's Distance" which allows a combination of qualitative and quantitative variables.
+
+## Approach 2: Preliminary results
+
+* First world countries cluster together. 
+* Countries I would be afraid to travel to cluster together (Chad, Venezuela, Sudan)
+
+## Approach 2: 2018 subindex means
+
+cluster | Area 1 | Area 2 | Area 3 | Area 4 | Area 5 | n
+--------+--------+--------+--------+--------+--------+----
+1       | 6.52 | 4.43 | 7.53 | 6.32 | 6.61 | 69
+2       | 6.94 | 5.50 | 9.06 | 7.79 | 7.48 | 16
+3       | 6.27 | 7.62 | 9.43 | 8.28 | 8.34 | 54
+4       | 6.19 | 3.50 | 5.75 | 4.43 | 5.43 | 23
+Area: |Size of Government |Property Rights|Sound Money|Free Trade|Regulation| n
+
+## Stylized facts
+
+* First world countries are best on all measures except size of government.
+  + (Similar to what I saw looking at individual years)
+* Basket cases are bad all around
+* We should probably be hoping for cluster 2 to get bigger governments over time to better enforce property rights. 
+* We should definitely hope cluster 1 countries move in the direction of cluster 2 countries.
+
+## Approach 3: Incorporating time trends
+
+`Under construction...`
+
+This was actually my first instinct when I first started presenting the previous iteration of this project! But it was too complicated to be a useful starting point.
+
+So now I'm trying to clean everything up, set up the code to be relatively generic, and setting myself up to do this approach without all the mess.
+
+## Conclusion
+
+`Under construction...`
+
+I've got a heavy teaching/service load, so this is going to be slow moving for a while. But feel free to mess around with my code. 
+
+I won't be offended if you scoop this project--just list me as a coauthor!
