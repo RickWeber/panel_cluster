@@ -26,6 +26,9 @@ This project lives at https://www.github.com/rickWeber/panel_cluster
 
 -   Institutions matter
 -   But what *mix* of institutions is best?
+-   Can we have *too much* Rule of Law?*
+
+*No. That's a stupid question. But it's setting me up for the next slide.
 
 ## The underlying data: Economic Freedom of the World (EFW)
 
@@ -124,9 +127,11 @@ still basically clustering one year at a time, but the labels are more
 stable than when clustering in total isolation.
 
 ## Chained-kmeans
-![](https://raw.githubusercontent.com/RickWeber/kmeans_over_time/master/clusters_over_time.png)
 See the link below to look on your own screen:
-https://raw.githubusercontent.com/RickWeber/kmeans_over_time/master/clusters_over_time.png
+https://github.com/RickWeber/kmeans_over_time/
+
+![](https://raw.githubusercontent.com/RickWeber/kmeans_over_time/master/clusters_over_time.png)
+
 
 ## Approach 2: The whole enchilada
 
