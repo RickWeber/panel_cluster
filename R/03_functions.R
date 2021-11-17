@@ -4,23 +4,12 @@ source("01_libraries.R")
 source("02_import_data.R") ; df <- efw_data_panel
 # remove above. Just there for debugging
 
-### Visualize cluster membership over time
-plot_membership <- function(clustered_panel_df){
-  clustered_panel_df %>%
-    ggplot(aes(year,country,fill = as.factor(cluster))) +
-    geom_tile() +
-    theme_minimal() +
-    scale_fill_brewer(type = "qual",
-                      palette = "Set1")
-}
+### Import function files
+source("03a_clustering_functions.R")
+source("03b_data_manipulation_functions.R")
+source("03c_visualization_functions.R")
+source("03d_animation_functions.R")
 
-### Widen data
-efw_widen <- function(df, vars=paste0("efw",1:5)){
-  df %>%
-    select(-overall) %>%
-    pivot_wider(names_from = "year",
-                values_from = vars)
-}
 
 ### Widen then cluster
 cluster_wide <- function(df, k = 4){
@@ -37,149 +26,10 @@ cluster_wide <- function(df, k = 4){
   out
 }
 
-### Add principal components on to a dataframe
-add_pca_efw <- function(df,components = 2){
-  # add first two principal components onto a data frame
-  pca <- df %>%
-    select(contains("efw")) %>%
-    na.omit %>%
-    prcomp
-  pca <- pca$x[,paste0("PC",1:components)]
-  cbind(na.omit(df),pca) %>% as_tibble
-}
-# Note to self: replace this with https://www.rdocumentation.org/packages/factoextra/versions/1.0.7/topics/fviz_cluster
-# and related 
-
-### Calculate a distance matrix between each row using Gower distance.
-gower <- function(df){
-  map(1:nrow(df),function(x){
-    gower_dist(df[x,],df)
-  }) %>% unlist %>% matrix(.,ncol = nrow(df))
-} 
-
-### Year-wise clustering
-cluster_by_year_full <- function(df, k = 4){
-  df %>%
-    group_by(year) %>%
-    nest %>%
-    mutate(cluster_object = map(data,function(d){
-      d %>% select(contains("efw")) %>% na.omit %>% scale %>% kmeans(k)
-    })) %>%
-    mutate(clustered_data = map2(data,cluster_object,function(d,c){
-      cluster = c$cluster
-      cbind(d %>% na.omit,cluster) %>% as_tibble
-    }))
-} 
-
-cluster_by_year <- function(df, k = 4){
-  cluster_by_year_full(df, k) %>% 
-    select(clustered_data) %>%
-    unnest
-}
-
-### Chained k-means
-chained_clustering_by_year <- function(df, k = 4){
-  yrs <- unique(df$year) %>% sort
-  first_df <- df %>%
-    filter(year == first(yrs)) %>% 
-    na.omit 
-  # print(nrow(first_df))
-  first_k <- first_df %>% 
-    select(contains("efw")) %>%
-    scale %>%
-    kmeans(k)
-  cent <- first_k$centers
-  # print(cent)
-  out_df <- cbind(first_df,cluster = first_k$cluster) %>% as_tibble()
-  for(y in setdiff(yrs,first(yrs))){
-    # print(y)
-    next_df <- df %>%
-      filter(year == y) %>%
-      na.omit
-    next_k <- next_df %>%
-      select(contains("efw")) %>%
-      scale %>%
-      kmeans(cent)
-    cent <- next_k$centers
-    # print(cent)
-    next_df <- cbind(next_df, cluster = next_k$cluster)
-    out_df <- full_join(out_df,next_df)
-  }
-  return(out_df)
-}
-
-## realign cluster labels
-### find cluster centers
-cluster_centers <- function(clustered_df){
-  # Convenience function
-  clustered_df %>% ungroup %>%
-    group_by(cluster) %>%
-    # should explicitly select data columns
-    # or maybe I just select out columns I don't want before
-    # running data through this function
-    summarize_if(is.double,funs(mean(.,na.rm = T))) %>%
-    ungroup %>%
-    arrange(cluster) %>%
-    select(-cluster)
-}
-
-### measure distances between cluster centers
-center_distances <- function(base_centers, next_centers){
-  # Note:
-  # element [i,j] of the output shows the distance between
-  # base_center[i,] and next_center[j,]
-  base_k <- nrow(base_centers)
-  next_k <- nrow(next_centers)
-  if (base_k != next_k) return("ERROR")
-  k <- base_k
-  map(1:k,
-      function(i){
-        map_dbl(1:k,
-                function(j){
-                  # get distance between center j from next and center i from base
-                  rbind(base_centers[i,],
-                        next_centers[j,]) %>%
-                    dist
-                  # put it into element i,j of distances
-                })
-      }) %>% unlist %>% 
-    matrix(nrow = k) %>% t 
-}
-
-### sum of square distances
-evaluate_mapping <- function(mapping, distances){
-  diag(distances[mapping,])^2 %>% sum
-}
-
-### choose a mapping to minimize distances
-choose_mapping <- function(distances){
-  possible_mappings <- permutations(ncol(distances),ncol(distances))
-  nmappings <- nrow(possible_mappings)
-  scores <- map_dbl(1:nmappings,
-                    function(m){
-                      evaluate_mapping(possible_mappings[m,],distances)
-                    })
-  possible_mappings[which.min(scores),]
-}
-
-### relabel clusters based on a given mapping
-relabel <- function(df, mapping){
-  k <- length(mapping)
-  df <- df %>%
-    mutate(cluster = cluster + k)
-  for (c in 1:k) {
-    df <- df %>%
-      mutate(cluster = ifelse(cluster == (c + k),
-                              mapping[c],
-                              cluster))
-  }
-  df
-}
 
 
 
 ########
-source("03a_alignment.R")
 
 df %>% cluster_by_year(4) %>% cluster_alignment(4)
 
@@ -190,32 +40,6 @@ df %>% cluster_by_year(4) %>% cluster_alignment(4)
 # Question: are the results affected by a widening of the dataset? e.g., if one year has a lot of new countries, 
 # could that result in cluster centers shifting (relatively) dramatically?
 
-# map data
-map_coords <- map_data("world") %>%
-  as_tibble() %>%
-  mutate(iso3c = countrycode(region,"country.name","iso3c"))
-
-### mapping function
-draw_map <- function(df){
-  df %>% 
-    right_join(map_coords) %>% 
-    ggplot(aes(long,lat,group = group)) + 
-    geom_polygon(aes(fill = as.factor(cluster)),color = alpha("white", 1/2), size = 0.2) +
-    theme(legend.position = "none") +
-    theme(
-      axis.text.x=element_blank(),
-      axis.ticks.x=element_blank(),
-      axis.title.y=element_blank(),
-      axis.text.y=element_blank(),
-      axis.ticks.y=element_blank(),
-      panel.background = element_blank()) +
-    labs(title =  "",
-         x = "",
-         y = "") + scale_fill_viridis_d()
-} 
-
-df %>% cluster_wide %>% draw_map
-# df %>% cluster_wide %>% fviz_cluster
 
 ###########################
 # test the cluster alignment function
